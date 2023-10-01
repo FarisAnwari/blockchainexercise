@@ -3,7 +3,7 @@
 import datetime
 import hashlib
 import json
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 # 1. Blockchain (Server)
 class Blockchain:
@@ -49,7 +49,7 @@ class Blockchain:
     def is_chain_valid(self):
         prev_block = self.chain[0]
         now_index = 1
-        while now_index < len(self.chain) + 1:
+        while now_index < len(self.chain):
             now_block = self.chain[now_index]
 
             # 1. cek apakah hash now block = prev hash 
@@ -95,9 +95,8 @@ def mining():
     prev_hash = prev_block['hash']
     # set curr_hash value to None
     curr_hash = None
-    data = None
     # create block 
-    created_block = blockchain.create_block(proof, prev_hash, curr_hash, proof_of_work, data)
+    created_block = blockchain.create_block(proof, prev_hash, curr_hash, proof_of_work)
     
     # get curr hash
     curr_block = blockchain.get_last_block()
@@ -123,8 +122,16 @@ def create_block():
     # get prev hash 
     # prev_hash = blockchain.get_hash(prev_block)
     prev_hash = prev_block['hash']
+
+    curr_hash = None
     # create block 
-    created_block = blockchain.create_block(proof, prev_hash, proof_of_work, data['data'])
+    created_block = blockchain.create_block(proof, prev_hash, curr_hash, proof_of_work, data['data'])
+
+    # get curr hash
+    curr_block = blockchain.get_last_block()
+    curr_hash = blockchain.get_hash(curr_block)
+
+    curr_block['hash'] = curr_hash
     response = {
         'message': "Blockchain is successfully created",
         'created block': created_block
@@ -133,5 +140,23 @@ def create_block():
 
 # Buatkan endpoint yang mengecek apakah chainnya valid
 # Simpan hash block didalam blocknya
+
+@app.route("/check_valid", methods=['GET'])
+def check_valid():
+    valid = blockchain.is_chain_valid()
+    response = {
+        'validity': "Blockchain is " + str(valid)
+    }
+    return jsonify(response), 200
+
+@app.route("/ruin_chain", methods=['GET'])
+def ruin_chain():
+    curr_block = blockchain.get_last_block()
+    curr_block['prev_hash'] = curr_block['hash']
+    response = {
+        'message': "Blockchain has been ruined",
+        'block': curr_block
+    }
+    return jsonify(response), 200
 
 app.run()
